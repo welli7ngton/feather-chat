@@ -62,7 +62,7 @@ public class Client implements Runnable {
           }
         }
       } catch (IOException e) {
-        System.out.println("An error occurred during the process: " + e.toString());
+        System.out.println("Um erro aconteceu durante o processo: " + e.toString());
         shutdown();
       }
     }
