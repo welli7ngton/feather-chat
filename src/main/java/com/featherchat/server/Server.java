@@ -1,4 +1,4 @@
-package com.featherchat.server;
+package src.main.java.com.featherchat.server;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,7 +7,6 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
@@ -17,7 +16,6 @@ public class Server implements Runnable {
   private ArrayList<ConnHandler> connections;
   private ServerSocket server;
   private boolean done;
-
   private ExecutorService pool;
 
   public Server() {
@@ -28,29 +26,33 @@ public class Server implements Runnable {
   @Override
   public void run() {
     try {
-      System.out.println("server is running");
+      System.out.println("Server is running");
       server = new ServerSocket(defaultPort);
       pool = Executors.newCachedThreadPool();
 
       while (!done) {
         Socket client = server.accept();
         ConnHandler handler = new ConnHandler(client);
-        connections.add(handler);
+        synchronized (connections) {
+          connections.add(handler);
+        }
         pool.execute(handler);
       }
     } catch (IOException e) {
+      e.printStackTrace();
       shutdown();
     }
   }
 
   public void shutdown() {
+    done = true;
     try {
-      done = true;
-      if (!server.isClosed()) {
+      if (server != null && !server.isClosed()) {
         server.close();
       }
-    } catch (Exception e) {
-      System.out.println("Something happened in Server.shutdown");
+      pool.shutdown();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 
@@ -64,10 +66,12 @@ public class Server implements Runnable {
       this.client = client;
     }
 
-    public void broadcast(String message) {
-      for (ConnHandler ch : connections) {
-        if (ch != null) {
-          ch.sendMessage(message);
+    public synchronized void broadcast(String message) {
+      synchronized (connections) {
+        for (ConnHandler ch : connections) {
+          if (ch != null) {
+            ch.sendMessage(message);
+          }
         }
       }
     }
@@ -77,10 +81,9 @@ public class Server implements Runnable {
       try {
         out = new PrintWriter(client.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-        broadcast("Someone joined the chad!");
+        broadcast("Someone joined the chat!");
 
         String message;
-
         while ((message = in.readLine()) != null) {
           if (message.startsWith("/quit")) {
             broadcast("Someone just left.");
@@ -91,7 +94,7 @@ public class Server implements Runnable {
           }
         }
       } catch (IOException e) {
-        System.out.println("something happened trying to shutdown the connhandler");
+        e.printStackTrace();
       }
     }
 
@@ -99,7 +102,14 @@ public class Server implements Runnable {
       try {
         out.println(message);
       } catch (Exception e) {
-        System.out.println("Something happened trying to send a message");
+        e.printStackTrace();
+      }
+    }
+
+    public void shutdown() {
+      clientShutdown();
+      synchronized (connections) {
+        connections.remove(this);
       }
     }
 
@@ -110,8 +120,8 @@ public class Server implements Runnable {
         if (!client.isClosed()) {
           client.close();
         }
-      } catch (Exception e) {
-        System.out.println("Something happened trying to shutdown the client");
+      } catch (IOException e) {
+        e.printStackTrace();
       }
     }
 
@@ -119,7 +129,8 @@ public class Server implements Runnable {
 
   public static void main(String[] args) {
     Server server = new Server();
-    server.run();
+    Thread serverThread = new Thread(server);
+    serverThread.start();
   }
 
 }
