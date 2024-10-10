@@ -60,3 +60,9 @@ Thumbs.db
 .env
 .ENV
 ENV
+
+# PostgreSQL Database Configuration
+*.properties
+
+/bin
+
