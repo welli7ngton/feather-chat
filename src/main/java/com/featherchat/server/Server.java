@@ -1,4 +1,4 @@
-package src.main.java.com.featherchat.server;
+package com.featherchat.server;
 
 import java.io.BufferedReader;
 import java.io.IOException;
